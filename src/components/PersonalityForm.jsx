@@ -77,10 +77,106 @@ export default function PersonalityForm({ onPredict, userName }) {
     setAnswers(prev => ({ ...prev, [qId]: value }))
   }
 
+  function normalizeCategory(category) {
+    if (!category) return ''
+    return category.toLowerCase().trim()
+  }
+
+  function scoreForQuestion(questionId) {
+    const question = selectedQuestions.find(q => q.id === questionId)
+    if (!question) return null
+    return question.scoreMapping[answers[questionId]] || null
+  }
+
+  function mapScoreToFeature(score, feature) {
+    if (score == null) return null
+    const value = Number(score)
+
+    switch (feature) {
+      case 'social_preference':
+        if (value <= 1.5) return 'Prefers groups'
+        if (value <= 2.5) return 'Balanced'
+        return 'Prefers solitude'
+      case 'alone_time':
+        if (value <= 1.5) return 'Low'
+        if (value <= 2.5) return 'Moderate'
+        return 'High'
+      case 'group_comfort':
+        if (value <= 1.5) return 'Uncomfortable'
+        if (value <= 2.5) return 'Neutral'
+        return 'Comfortable'
+      case 'communication_style':
+        if (value <= 1.5) return 'Reserved'
+        if (value <= 2.5) return 'Thoughtful'
+        if (value <= 3.5) return 'Direct'
+        return 'Expressive'
+      case 'decision_style':
+        if (value <= 1.5) return 'Impulsive'
+        if (value <= 2.5) return 'Consensus-driven'
+        if (value <= 3.5) return 'Analytical'
+        return 'Reflective'
+      default:
+        return null
+    }
+  }
+
+  function deriveFeatures() {
+    const groups = {
+      social_preference: [],
+      alone_time: [],
+      group_comfort: [],
+      communication_style: [],
+      decision_style: []
+    }
+
+    for (const question of selectedQuestions) {
+      const category = normalizeCategory(question.category)
+      const score = question.scoreMapping[answers[question.id]]
+      if (score == null) continue
+
+      if (category.includes('introversion') || category.includes('extroversion') || category.includes('social energy')) {
+        groups.social_preference.push(score)
+      } else if (category.includes('emotional')) {
+        groups.alone_time.push(score)
+      } else if (category.includes('teamwork')) {
+        groups.group_comfort.push(score)
+      } else if (category.includes('creativity')) {
+        groups.communication_style.push(score)
+      } else if (category.includes('leadership') || category.includes('decision')) {
+        groups.decision_style.push(score)
+      }
+    }
+
+    return {
+      social_preference: mapScoreToFeature(
+        groups.social_preference.length ? groups.social_preference.reduce((a, b) => a + b, 0) / groups.social_preference.length : 2,
+        'social_preference'
+      ),
+      alone_time: mapScoreToFeature(
+        groups.alone_time.length ? groups.alone_time.reduce((a, b) => a + b, 0) / groups.alone_time.length : 2,
+        'alone_time'
+      ),
+      group_comfort: mapScoreToFeature(
+        groups.group_comfort.length ? groups.group_comfort.reduce((a, b) => a + b, 0) / groups.group_comfort.length : 2,
+        'group_comfort'
+      ),
+      communication_style: mapScoreToFeature(
+        groups.communication_style.length ? groups.communication_style.reduce((a, b) => a + b, 0) / groups.communication_style.length : 2,
+        'communication_style'
+      ),
+      decision_style: mapScoreToFeature(
+        groups.decision_style.length ? groups.decision_style.reduce((a, b) => a + b, 0) / groups.decision_style.length : 2,
+        'decision_style'
+      )
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
+
+    const payload = deriveFeatures()
 
     try {
       const response = await fetch('http://localhost:5000/predict', {
@@ -88,7 +184,7 @@ export default function PersonalityForm({ onPredict, userName }) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(answers)
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
@@ -123,7 +219,7 @@ export default function PersonalityForm({ onPredict, userName }) {
       </div>
       {selectedQuestions.map(q => (
         <div key={q.id} className="question">
-          <label>{q.text}</label>
+          <label>{q.question}</label>
           <select onChange={e => handleChange(q.id, e.target.value)} defaultValue="">
             <option value="" disabled>
               Select
