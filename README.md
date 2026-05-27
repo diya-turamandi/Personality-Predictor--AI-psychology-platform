@@ -1,20 +1,26 @@
 # AI Personality Predictor
 
+Monorepo layout:
+
+- `frontend/` — React + Vite UI
+- `backend/` — Python Flask ML API and model assets
+
 Quick starter for the AI Personality Predictor — a beginner-friendly React + Vite app scaffold.
 
 Getting started:
 
-Install dependencies:
+Install frontend dependencies:
 ```
+cd frontend
 npm install
 ```
 
-Run dev server:
+Run the frontend dev server:
 ```
 npm run dev
 ```
 
-Build:
+Build the frontend:
 ```
 npm run build
 ```
@@ -33,19 +39,21 @@ pip install -r requirements.txt
 2. Train the model and save the files:
 
 ```bash
-cd ..
+cd backend
 python scripts/train_personality_model.py
 ```
 
 3. Start the Flask server:
 
 ```bash
-python backend/app.py
+cd backend
+python app.py
 ```
 
 4. Start the React frontend in a separate terminal:
 
 ```bash
+cd frontend
 npm run dev
 ```
 
